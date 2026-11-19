@@ -204,27 +204,7 @@ It also declares data tests (`unique`, `not_null`, `accepted_values`) executed b
 | `baseline` | LangChain `create_sql_agent` (ReAct) |
  
 ---
- 
-## 📊 Results
- 
-> Generated with `python -m eval.run_eval`. Full per-question details in `eval/results/<run>.json`
-> and in the **Evaluation** page of the UI.
- 
-**Agent model:** `<model>` · **Judge model:** `<model>`
- 
-| Config | Execution accuracy | Answer accuracy (judge) | Grounded answers |
-|---|:---:|:---:|:---:|
-| Tables only | – | – | – |
-| Schema | – | – | – |
-| Schema + dbt docs | – | – | – |
-| Schema + docs + examples | – | – | – |
-| LangChain baseline | – | – | – |
- 
-**Key findings**
- 
-- *To fill in after the run, e.g. which tags benefit most from the docs, most frequent error categories.*
----
- 
+
 ## 🚀 Getting started
  
 ### Prerequisites
