@@ -1,0 +1,12 @@
+version: 2
+models:
+  - name: stg_customers
+    description: "{{ doc('staging_note') }}"
+  - name: stg_products
+    description: "{{ doc('staging_note') }}"
+  - name: stg_orders
+    description: "{{ doc('staging_note') }}"
+  - name: stg_order_items
+    description: "{{ doc('staging_note') }}"
+  - name: stg_payments
+    description: "{{ doc('staging_note') }}"

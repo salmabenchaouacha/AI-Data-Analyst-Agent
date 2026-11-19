@@ -1,0 +1,275 @@
+# 30-question test set. Each question has:
+#   gold_sql : reference query (DuckDB, runs on the dbt marts)
+#   tags     : the difficulty it tests -> used to analyse where the agent fails
+#   ordered  : true if row order matters for correctness
+# Tag legend
+#   simple          single-table aggregate
+#   revenue_filter  needs the business rule "revenue = completed orders only"
+#   time            date / month / year filter or grouping
+#   join            requires joining two marts
+#   ranking         ORDER BY + LIMIT
+#   ratio           percentage / rate computation
+#   null_handling   NULLs or customers without orders
+#   definition      relies on a column whose meaning is only in the docs
+#   multi_step      CTE or several aggregation levels
+#   filter          non-revenue WHERE condition (status, product, threshold)
+#   unanswerable    data does not exist -> the agent must not invent a number
+
+questions:
+  - id: q01
+    question: What is our total revenue?
+    tags: [revenue_filter]
+    gold_sql: |
+      select round(sum(net_amount), 2) as revenue
+      from fct_orders where status = 'completed'
+
+  - id: q02
+    question: How many orders were placed in 2025?
+    tags: [time, simple]
+    gold_sql: |
+      select count(*) as n_orders from fct_orders where order_year = 2025
+
+  - id: q03
+    question: How many customers do we have?
+    tags: [simple]
+    gold_sql: |
+      select count(*) as n_customers from dim_customers
+
+  - id: q04
+    question: What was the revenue in 2025?
+    tags: [revenue_filter, time]
+    gold_sql: |
+      select round(sum(net_amount), 2) as revenue
+      from fct_orders where status = 'completed' and order_year = 2025
+
+  - id: q05
+    question: What is the average order value?
+    tags: [revenue_filter]
+    gold_sql: |
+      select round(avg(net_amount), 2) as avg_order_value
+      from fct_orders where status = 'completed'
+
+  - id: q06
+    question: Show revenue by customer country, from highest to lowest.
+    tags: [join, revenue_filter, ranking]
+    ordered: true
+    gold_sql: |
+      select c.country, round(sum(o.net_amount), 2) as revenue
+      from fct_orders o
+      join dim_customers c on o.customer_id = c.customer_id
+      where o.status = 'completed'
+      group by c.country
+      order by revenue desc
+
+  - id: q07
+    question: What are the top 5 products by revenue?
+    tags: [ranking, revenue_filter]
+    ordered: true
+    gold_sql: |
+      select product_name, revenue
+      from dim_products
+      order by revenue desc
+      limit 5
+
+  - id: q08
+    question: Which product category generated the most gross margin in 2025?
+    tags: [revenue_filter, time, ranking, definition]
+    gold_sql: |
+      select category, round(sum(margin_amount), 2) as margin
+      from fct_order_items
+      where status = 'completed' and order_year = 2025
+      group by category
+      order by margin desc
+      limit 1
+
+  - id: q09
+    question: Give me the monthly revenue for 2025.
+    tags: [time, revenue_filter]
+    ordered: true
+    gold_sql: |
+      select order_month, round(sum(net_amount), 2) as revenue
+      from fct_orders
+      where status = 'completed' and order_year = 2025
+      group by order_month
+      order by order_month
+
+  - id: q10
+    question: What percentage of orders were cancelled?
+    tags: [ratio]
+    gold_sql: |
+      select round(100.0 * sum(case when status = 'cancelled' then 1 else 0 end) / count(*), 2) as cancel_rate_pct
+      from fct_orders
+
+  - id: q11
+    question: How many customers have never placed an order?
+    tags: [null_handling]
+    gold_sql: |
+      select count(*) as n_customers from dim_customers where n_orders = 0
+
+  - id: q12
+    question: How many repeat customers do we have?
+    tags: [definition]
+    gold_sql: |
+      select sum(is_repeat_customer) as n_repeat_customers from dim_customers
+
+  - id: q13
+    question: What share of revenue comes from business customers, in percent?
+    tags: [ratio, join, revenue_filter]
+    gold_sql: |
+      select round(100.0 * sum(case when c.segment = 'business' then o.net_amount else 0 end)
+                   / sum(o.net_amount), 2) as business_share_pct
+      from fct_orders o
+      join dim_customers c on o.customer_id = c.customer_id
+      where o.status = 'completed'
+
+  - id: q14
+    question: Who are our top 3 customers by lifetime revenue?
+    tags: [ranking, revenue_filter]
+    ordered: true
+    gold_sql: |
+      select full_name, lifetime_revenue
+      from dim_customers
+      order by lifetime_revenue desc
+      limit 3
+
+  - id: q15
+    question: Which payment method is used for the most orders?
+    tags: [null_handling, ranking]
+    gold_sql: |
+      select payment_method, count(*) as n_orders
+      from fct_orders
+      where payment_method is not null
+      group by payment_method
+      order by n_orders desc
+      limit 1
+
+  - id: q16
+    question: What is the total value of returned orders?
+    tags: [simple]
+    gold_sql: |
+      select round(sum(net_amount), 2) as returned_value
+      from fct_orders where status = 'returned'
+
+  - id: q17
+    question: What is the average discount rate across all order lines?
+    tags: [simple]
+    gold_sql: |
+      select round(avg(discount_rate), 4) as avg_discount_rate from fct_order_items
+
+  - id: q18
+    question: How many Standing Desks did we sell in 2025?
+    tags: [revenue_filter, time]
+    gold_sql: |
+      select sum(quantity) as units_sold
+      from fct_order_items
+      where product_name = 'Standing Desk' and status = 'completed' and order_year = 2025
+
+  - id: q19
+    question: Which month of 2025 had the highest number of orders?
+    tags: [time, ranking]
+    gold_sql: |
+      select order_month, count(*) as n_orders
+      from fct_orders
+      where order_year = 2025
+      group by order_month
+      order by n_orders desc
+      limit 1
+
+  - id: q20
+    question: Compare revenue per category between 2024 and 2025.
+    tags: [time, revenue_filter, multi_step]
+    gold_sql: |
+      select category, order_year, round(sum(net_amount), 2) as revenue
+      from fct_order_items
+      where status = 'completed'
+      group by category, order_year
+
+  - id: q21
+    question: How many distinct customers placed at least one order in 2025?
+    tags: [time, simple]
+    gold_sql: |
+      select count(distinct customer_id) as n_customers
+      from fct_orders where order_year = 2025
+
+  - id: q22
+    question: What was our revenue in 2023?
+    tags: [unanswerable, time]
+    gold_sql: |
+      select round(sum(net_amount), 2) as revenue
+      from fct_orders where status = 'completed' and order_year = 2023
+
+  - id: q23
+    question: Which country has the highest average order value?
+    tags: [join, ranking, revenue_filter]
+    gold_sql: |
+      select c.country, round(avg(o.net_amount), 2) as avg_order_value
+      from fct_orders o
+      join dim_customers c on o.customer_id = c.customer_id
+      where o.status = 'completed'
+      group by c.country
+      order by avg_order_value desc
+      limit 1
+
+  - id: q24
+    question: What is our overall gross margin rate in percent?
+    tags: [ratio, revenue_filter, definition]
+    gold_sql: |
+      select round(100.0 * sum(margin_amount) / sum(net_amount), 2) as margin_rate_pct
+      from fct_order_items where status = 'completed'
+
+  - id: q25
+    question: How many customers who signed up in 2025 have made at least one completed order?
+    tags: [time, filter, definition]
+    gold_sql: |
+      select count(*) as n_customers
+      from dim_customers
+      where substr(cast(signup_date as varchar), 1, 4) = '2025' and n_completed_orders >= 1
+
+  - id: q26
+    question: What was the revenue in Q4 2025?
+    tags: [time, revenue_filter]
+    gold_sql: |
+      select round(sum(net_amount), 2) as revenue
+      from fct_orders
+      where status = 'completed' and order_month between '2025-10' and '2025-12'
+
+  - id: q27
+    question: What percentage of 2025 revenue came from the Electronics category?
+    tags: [ratio, time, revenue_filter]
+    gold_sql: |
+      select round(100.0 * sum(case when category = 'Electronics' then net_amount else 0 end)
+                   / sum(net_amount), 2) as electronics_share_pct
+      from fct_order_items
+      where status = 'completed' and order_year = 2025
+
+  - id: q28
+    question: By how many percent did revenue change in December 2025 compared to November 2025?
+    tags: [time, multi_step, revenue_filter]
+    gold_sql: |
+      with m as (
+        select order_month, sum(net_amount) as revenue
+        from fct_orders
+        where status = 'completed' and order_month in ('2025-11', '2025-12')
+        group by order_month
+      )
+      select round(100.0 * (max(case when order_month = '2025-12' then revenue end)
+                            - max(case when order_month = '2025-11' then revenue end))
+                   / max(case when order_month = '2025-11' then revenue end), 2) as mom_growth_pct
+      from m
+
+  - id: q29
+    question: How many customers have a lifetime revenue above 2000?
+    tags: [simple, revenue_filter]
+    gold_sql: |
+      select count(*) as n_customers from dim_customers where lifetime_revenue > 2000
+
+  - id: q30
+    question: Which product appears most often in returned orders?
+    tags: [ranking, filter]
+    gold_sql: |
+      select product_name, count(*) as n_returned_lines
+      from fct_order_items
+      where status = 'returned'
+      group by product_name
+      order by n_returned_lines desc
+      limit 1

@@ -1,0 +1,30 @@
+# Few-shot examples used only in the "schema_docs_examples" context mode.
+# They must NOT overlap with eval/questions.yaml (no test-set leakage).
+examples:
+  - question: How many orders were returned in 2024?
+    sql: |
+      select count(*) as n_returned from fct_orders
+      where status = 'returned' and order_year = 2024
+
+  - question: What is the revenue per payment method?
+    sql: |
+      select payment_method, round(sum(net_amount), 2) as revenue
+      from fct_orders
+      where status = 'completed'
+      group by payment_method
+      order by revenue desc
+
+  - question: Top 3 categories by units sold in 2024
+    sql: |
+      select category, sum(quantity) as units_sold
+      from fct_order_items
+      where status = 'completed' and order_year = 2024
+      group by category
+      order by units_sold desc
+      limit 3
+
+  - question: Average lifetime revenue of consumer customers who ordered at least once
+    sql: |
+      select round(avg(lifetime_revenue), 2) as avg_ltv
+      from dim_customers
+      where segment = 'consumer' and n_completed_orders >= 1

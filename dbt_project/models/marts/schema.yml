@@ -1,0 +1,139 @@
+version: 2
+
+# These descriptions are the "documentation" injected into the agent's context.
+# The evaluation measures how much they improve accuracy (see eval/README).
+
+models:
+  - name: fct_orders
+    description: >
+      One row per order (grain = order_id). Use this table for order counts,
+      revenue per order, average order value and payment analysis.
+      REVENUE RULE: revenue always means SUM(net_amount) over orders with
+      status = 'completed' (equivalently is_completed = 1). Cancelled and
+      returned orders are NEVER counted as revenue.
+    columns:
+      - name: order_id
+        description: Primary key of the order.
+        tests: [unique, not_null]
+      - name: customer_id
+        description: Foreign key to dim_customers.customer_id.
+      - name: order_date
+        description: Date the order was placed (DATE).
+      - name: order_month
+        description: Order month as text 'YYYY-MM'. Prefer it for monthly grouping/filtering.
+      - name: order_year
+        description: Order year as integer (2024 or 2025).
+      - name: status
+        description: "One of 'completed', 'returned', 'cancelled'."
+        tests:
+          - accepted_values:
+              values: ['completed', 'returned', 'cancelled']
+      - name: is_completed
+        description: 1 if status = 'completed', else 0.
+      - name: n_items
+        description: Number of distinct order lines in the order.
+      - name: total_quantity
+        description: Total units across all lines of the order.
+      - name: gross_amount
+        description: Order value before discounts (sum of quantity * unit_price).
+      - name: net_amount
+        description: Order value after discounts. This is the revenue measure (only for completed orders).
+      - name: payment_method
+        description: "credit_card, paypal, bank_transfer or gift_card. NULL for cancelled orders (never paid)."
+      - name: amount_paid
+        description: Amount actually paid. 0 for cancelled orders. Do not use for revenue, use net_amount.
+
+  - name: fct_order_items
+    description: >
+      One row per order line (grain = order_item_id). Use it for product- and
+      category-level analysis (units, revenue, margin). It already contains
+      order_date, order_month, status and customer_id copied from the order, so
+      no join with fct_orders is needed. Apply status = 'completed' for revenue,
+      units sold and margin.
+    columns:
+      - name: order_item_id
+        description: Primary key of the order line.
+        tests: [unique, not_null]
+      - name: order_id
+        description: Foreign key to fct_orders.order_id.
+      - name: customer_id
+        description: Customer who placed the order.
+      - name: order_date
+        description: Order date (DATE).
+      - name: order_month
+        description: Order month as text 'YYYY-MM'.
+      - name: order_year
+        description: Order year as integer.
+      - name: status
+        description: Status of the parent order.
+      - name: product_id
+        description: Foreign key to dim_products.product_id.
+      - name: product_name
+        description: Product name.
+      - name: category
+        description: "Electronics, Home, Books or Sports."
+      - name: quantity
+        description: Units ordered on this line.
+      - name: unit_price
+        description: List price per unit at order time.
+      - name: discount_rate
+        description: Discount applied to the line (0, 0.1 or 0.2).
+      - name: gross_amount
+        description: quantity * unit_price.
+      - name: net_amount
+        description: Line revenue after discount = quantity * unit_price * (1 - discount_rate).
+      - name: cost_amount
+        description: quantity * unit_cost.
+      - name: margin_amount
+        description: net_amount - cost_amount (gross margin of the line).
+
+  - name: dim_customers
+    description: >
+      One row per customer (grain = customer_id), including customers who never
+      ordered. Pre-aggregated order metrics are available, so most customer
+      questions don't need a join.
+    columns:
+      - name: customer_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: full_name
+        description: First and last name.
+      - name: country
+        description: "France, Germany, Spain, Italy, Belgium or Tunisia."
+      - name: segment
+        description: "'consumer' or 'business'."
+      - name: signup_date
+        description: Account creation date.
+      - name: first_order_date
+        description: Date of first order (any status). NULL if never ordered.
+      - name: last_order_date
+        description: Date of last order (any status). NULL if never ordered.
+      - name: n_orders
+        description: Number of orders of any status.
+      - name: n_completed_orders
+        description: Number of completed orders.
+      - name: lifetime_revenue
+        description: Sum of net_amount over the customer's completed orders.
+      - name: is_repeat_customer
+        description: 1 if the customer has at least 2 completed orders.
+
+  - name: dim_products
+    description: One row per product with lifetime sales metrics (completed orders only).
+    columns:
+      - name: product_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: product_name
+        description: Product name.
+      - name: category
+        description: Product category.
+      - name: unit_price
+        description: Current list price.
+      - name: unit_cost
+        description: Unit cost of goods.
+      - name: units_sold
+        description: Units sold on completed orders (all time).
+      - name: revenue
+        description: Net revenue on completed orders (all time).
+      - name: margin
+        description: Gross margin on completed orders (all time).

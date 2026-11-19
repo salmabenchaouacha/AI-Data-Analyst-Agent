@@ -1,0 +1,16 @@
+langgraph>=0.2.60
+langchain>=0.3.14
+langchain-community>=0.3.14
+langchain-openai>=0.2.14
+# optional providers
+langchain-anthropic>=0.3.1
+langchain-ollama>=0.2.2
+duckdb>=1.1.3
+duckdb-engine>=0.14.0        # SQLAlchemy driver, used by the LangChain baseline
+sqlglot>=26.0.0
+pydantic>=2.9
+pyyaml>=6.0
+python-dotenv>=1.0
+fastapi>=0.115
+uvicorn[standard]>=0.32
+dbt-duckdb>=1.9.1

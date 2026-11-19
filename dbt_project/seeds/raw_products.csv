@@ -1,0 +1,16 @@
+id,name,category,unit_price,unit_cost
+1,Wireless Mouse,Electronics,25,15.25
+2,Mechanical Keyboard,Electronics,89,40.61
+3,USB-C Hub,Electronics,45,23.34
+4,27in Monitor,Electronics,279,141.12
+5,Noise-Cancelling Headphones,Electronics,199,126.19
+6,Desk Lamp,Home,39,24.15
+7,Office Chair,Home,249,167.59
+8,Standing Desk,Home,499,235.4
+9,Plant Pot,Home,15,8.33
+10,Data Engineering Handbook,Books,49,22.42
+11,SQL Cookbook,Books,35,17.66
+12,ML Systems Design,Books,55,31.7
+13,Yoga Mat,Sports,29,13.24
+14,Running Shoes,Sports,119,59.47
+15,Water Bottle,Sports,19,11.64

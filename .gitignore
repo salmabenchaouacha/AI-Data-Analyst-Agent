@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+data/*.duckdb*
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+logs/
+frontend/node_modules/
+frontend/dist/
