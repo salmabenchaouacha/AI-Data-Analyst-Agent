@@ -26,7 +26,7 @@ how much dbt documentation in the context improves accuracy.
 - [The agent (LangGraph)](#-the-agent-langgraph)
 - [Data & dbt models](#-data--dbt-models)
 - [Evaluation methodology](#-evaluation-methodology)
-- [Results](#-results)
+
 - [Getting started](#-getting-started)
 - [Project structure](#-project-structure)
 - [Tech stack](#-tech-stack)
